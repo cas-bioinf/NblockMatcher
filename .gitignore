@@ -1,0 +1,9 @@
+/bsub_test/
+/archive/
+~lock
+/diag_match_file.xlsx
+/NC_008596.1.fasta.markov
+/diag_match_file_rc.xlsx
+/fimo_match/
+.vscode
+.ruff_cache
