@@ -410,24 +410,31 @@ def join_motif_background_frequencies(pfms, alphabet='ACGT'):
 def main(
     motif_file='',
     fasta='',
-    diag_match_output_file='',
+    dmf='',
     fimo_options=('--thresh', '0.05'),
     diagrams=(),
     vis_track_prefix='',
     filter_score=0,
+    filter_pval=None
 ):
     """
 
     :param motif_file: File with motifs.
     :param fasta: Fasta file to search.
-    :param diag_match_output_file: Output file .xlsx|.tsv|.csv.
+    :param dmf: Output file .xlsx|.tsv|.csv.
     :param fimo_options: Fimo options. Must be compatible with "--text" option.
     :param diagrams: list of diagram strings
     :param vis_track_prefix: path prefix for .gff and .interact files
+    :param filter_score: minimal combined score (default)
+    :param filter_pval: minimal pval based on combined score. Overrides the filter_score if set.
     :return:
     """
     fimo_options = list(fimo_options)
-    filter_options = Filter(score_thresh=filter_score)
+
+    if filter_pval is not None:
+        filter_options = Filter(filter_kind='pval', pval_thresh=filter_pval)
+    else:
+        filter_options = Filter(score_thresh=filter_score)
 
     # todo - We don't need to enforce alphabet if we use the score cuttoff
     # todo - Infer alphabet from pfms when score cutoff so it can be used in further functions
@@ -475,10 +482,9 @@ def main(
     all_sites = pd.concat([d.to_df() for d in D], ignore_index=True)
     all_sites.sort_values('score', ascending=False, inplace=True)
 
-    # output section
-    # todo: output some genome browser compatible format (gff for example)
-    # todo: allow more outputs at once
-
+    # ====================
+    #    output section
+    # ====================
     if vis_track_prefix != '':
         with open(vis_track_prefix + '.gff', 'w') as f1, open(vis_track_prefix + '.interact', 'w') as f2:
             for d in D:
@@ -488,25 +494,37 @@ def main(
 
         to_html(vis_track_prefix, fasta)
 
-    if diag_match_output_file.endswith('xlsx'):
-        all_sites.to_excel(diag_match_output_file, index=False)
-    elif diag_match_output_file.endswith('tsv'):
-        all_sites.to_csv(diag_match_output_file, sep='\t', index=False)
-    else:
-        # default to csv
-        all_sites.to_csv(diag_match_output_file, index=False)
+    if dmf and dmf.endswith('.xlsx'):
+        all_sites.to_excel(dmf, index=False)
+    elif dmf:
+        # defaults to tsv (some fields are comma separated, so tsv is better)
+        all_sites.to_csv(dmf, sep='\t', index=False)
+
+    return D, all_sites
 
 
 if __name__ == '__main__':
-    from tests import *
-    # test1()
-    # test1_rc()
-    # test2()
-    # test2v2()
-    # test2v3()
-    # test2v4()
-    # test3v1()
-    pass
+    import argparse
+    parser = argparse.ArgumentParser(description="NblockMatcher - extract motif matches combinations specified in diagram(s)")
 
+    parser.add_argument("--motif-file", dest="motif_file", required=True, help="File with MEME motifs.")
+    parser.add_argument("--fasta", dest="fasta", required=True, help="Fasta file to search.")
+    parser.add_argument("--diag-match-output-file", dest="dmf", help="Output file .xlsx|.tsv|.csv.")
+    parser.add_argument("--fimo-options", dest="fimo_options", nargs="+", default=['--thresh', '0.05'], help="Fimo options. Must be compatible with \"--text\" option.")
+    parser.add_argument("--diagrams", dest="diagrams", nargs="+", required=True, default=[], help="List of diagram strings.")
+    parser.add_argument("--vis-track-prefix", dest="vis_track_prefix", help="Path prefix for .gff and .interact files.")
+    parser.add_argument("--filter-score", dest="filter_score", type=float, default=0, help="Minimal combined score (default).")
+    parser.add_argument("--filter-pval", dest="filter_pval", type=float, help="Minimal pval based on combined score. Overrides the filter_score if set.")
 
+    args = parser.parse_args()
 
+    main(
+        motif_file=args.motif_file,
+        fasta=args.fasta,
+        dmf=args.diag_match_output_file,
+        fimo_options=args.fimo_options,
+        diagrams=args.diagrams,
+        vis_track_prefix=args.vis_track_prefix,
+        filter_score=args.filter_score,
+        filter_pval=args.filter_pval
+    )
