@@ -348,7 +348,7 @@ def run_fimo(motifs: str, fasta: SeqRecord, options=None) -> str:
 def analyze_output(fo: str, diagrams: List[Diagram], ft: Filter):
     df = pd.DataFrame().from_records(i.split('\t') for i in fo.split('\n') if i)
     df.columns = df.iloc[0]
-    df = df[1:]
+    df = df[1:].reset_index(drop=True)
     df.loc[:, ['start', 'stop']] = df.loc[:, ['start', 'stop']].astype(int)
     df.score = df.score.astype(float)
 
