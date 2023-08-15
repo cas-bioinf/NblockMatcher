@@ -1,6 +1,4 @@
-def two_compatible_2tuples(I, J, dist):
-    assert isinstance(dist, (tuple, list))
-
+def two_compatible_2tuples(I: list[tuple[int,int]], J: list[tuple[int,int]], dist:list[int]):
     j = 0
     lj = len(J)
     res = []
@@ -25,7 +23,7 @@ def two_compatible_2tuples(I, J, dist):
     return res
 
 
-def _resolve(res, resout):
+def _resolve(res: list[tuple[tuple[int,int],tuple[int, int]]], resout: list[tuple[tuple[int,int],tuple[int, int]]]):
     nres = []
     for r in res:
         ridx = [r[-1] == j[0] for j in resout]
@@ -54,7 +52,6 @@ def n_compatible_2tuples(n_lists, dists):
 
         res = _resolve(res, resout)
     return res
-
 
 def wrapper(n_lists, dists):
     # sort input
