@@ -414,7 +414,8 @@ def main(
     diagrams=(),
     vis_track_prefix='',
     filter_score=0,
-    filter_pval=None
+    filter_pval=None,
+    gff=''
 ):
     """
 
@@ -426,6 +427,7 @@ def main(
     :param vis_track_prefix: path prefix for .gff and .interact files
     :param filter_score: minimal combined score (default)
     :param filter_pval: minimal pval based on combined score. Overrides the filter_score if set.
+    :param gff: gff to use in html rendering [optional].
     :return:
     """
     fimo_options = list(fimo_options)
@@ -491,7 +493,7 @@ def main(
                     f1.write(i+'\n')
                     f2.write(j+'\n')
 
-        to_html(vis_track_prefix, fasta)
+        to_html(vis_track_prefix, fasta, gff=gff, df=all_sites)
 
     if dmf and dmf.endswith('.xlsx'):
         all_sites.to_excel(dmf, index=False)
@@ -514,6 +516,7 @@ if __name__ == '__main__':
     parser.add_argument("--vis-track-prefix", dest="vis_track_prefix", help="Path prefix for .gff and .interact files.")
     parser.add_argument("--filter-score", dest="filter_score", type=float, default=0, help="Minimal combined score (default).")
     parser.add_argument("--filter-pval", dest="filter_pval", type=float, help="Minimal pval based on combined score. Overrides the filter_score if set.")
+    parser.add_argument("--gff", dest="gff", help="Path to gff file to use in html rendering [optional]. File will be copied alongside the output file.")
 
     args = parser.parse_args()
 
