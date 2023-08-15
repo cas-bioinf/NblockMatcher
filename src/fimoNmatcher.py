@@ -8,8 +8,8 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio import motifs
-from search_n2 import wrapper
-from html_output import to_html
+from src.search_n2 import wrapper
+from src.html_output import to_html
 import enum
 import itertools
 
