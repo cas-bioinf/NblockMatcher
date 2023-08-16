@@ -19,6 +19,7 @@ base = """
     .scroll {
       overflow-y: auto; 
       height: 500px; 
+      font-family: monospace;
     }
     
     .scroll thead th {
@@ -28,6 +29,10 @@ base = """
     
     th {
       background: #f3f3f3;
+    }
+    
+    .highlight {
+     background: #9e9e9e;
     }
     
   </style>
@@ -44,6 +49,17 @@ base = """
 </div>
 </body> 
 <footer>
+<script>
+var rows = document.querySelectorAll('#matches tr');
+
+function highlightMe(ele) {
+      rows.forEach(function(r) {
+        r.classList.remove('highlight');
+      })
+      ele.parentNode.parentNode.classList.add('highlight');
+    }
+</script>
+
 <script>
 var igvDiv = document.getElementById("igv-div");
 
@@ -95,7 +111,6 @@ igv.createBrowser(igvDiv, options)
         .then(function (browser) {
              igv.browser = browser;
         })
-
 </script>
 
 </footer>
@@ -123,7 +138,7 @@ def to_html(prefix, fasta, gff='', df=None, filter_types=('region',)):
         ma = max(sinds) + offset
 
         return (
-            f"""<tr><td><span class="clickme" onClick="igv.browser.search('{x.sequence_name}:{mi}-{ma}')">{round(x.score, 2):0.2f}</span></td>"""
+            f"""<tr><td><span class="clickme" onClick="highlightMe(this); igv.browser.search('{x.sequence_name}:{mi}-{ma}')">{round(x.score, 2):0.2f}</span></td>"""
             f"<td>{x.sequence_name}</td>"
             f"<td>{x.orientation}</td>"
             f"<td>{x.matched_sequences}</td>"
@@ -133,7 +148,7 @@ def to_html(prefix, fasta, gff='', df=None, filter_types=('region',)):
     if df is None:
         dfhtml = ''
     else:
-        dfhtml = ('<table>'
+        dfhtml = ('<table id="matches">'
                   '<thead><tr><th>score</th><th>seq</th><th>orientation</th><th>match</th><th>range</th></tr></thead>'
                   '<tbody>') + '\n'.join([func2(i) for i in df.itertuples()]) + '\n</tbody><table>'
 
