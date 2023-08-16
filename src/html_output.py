@@ -2,6 +2,8 @@ from jinja2 import Environment
 import os
 import re
 import shutil
+import gzip
+
 # todo update igv when fixed version is released
 base = """
 <!DOCTYPE html>
@@ -49,7 +51,7 @@ var options =
 {
     "reference": {
         "name": "genome",
-        "fastaURL": "{{genome_fasta}}",
+        "fastaURL": "{{prefix}}_genome.fa",
         "indexed": false,
         "showIdeogram": false,
     },
@@ -82,7 +84,8 @@ var options =
             "format": "gff3",
             "displayMode": "expanded",
             "url": "{{prefix}}_spec.gff",
-            "order": 3
+            "order": 3,
+            "filterTypes": {{filterTypes}},
         },
     {% endif %}
     ]
@@ -100,9 +103,19 @@ igv.createBrowser(igvDiv, options)
 """
 
 
-def to_html(prefix, fasta, gff='', df=None):
+def to_html(prefix, fasta, gff='', df=None, filter_types=('region',)):
+    if fasta.endswith('.gz'):
+        with gzip.open(fasta, 'rt') as f, open(f'{prefix}_genome.fa', 'w') as fo:
+            fo.write(f.read())
+    else:
+        shutil.copyfile(fasta, f'{prefix}_genome.fa')
+
     if gff != '':
-        shutil.copyfile(gff, f'{prefix}_spec.gff')
+        if gff.endswith('.gz'):
+            with gzip.open(gff, 'rt') as f, open(f'{prefix}_spec.gff', 'w') as fo:
+                fo.write(f.read())
+        else:
+            shutil.copyfile(gff, f'{prefix}_spec.gff')
 
     def func2(x, offset=200):
         sinds = [int(i) for i in re.findall(r'\d+', x.sites)]
@@ -129,7 +142,7 @@ def to_html(prefix, fasta, gff='', df=None):
     with open(prefix + '.html', 'w') as f:
         f.write(template.render(
             prefix=os.path.basename(prefix),
-            genome_fasta=os.path.relpath(fasta, os.path.dirname(prefix)),
             gff=gff,
             dfhtml=dfhtml,
+            filterTypes=str(list(filter_types)),
         ))
