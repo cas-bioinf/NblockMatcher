@@ -1,8 +1,11 @@
+import signal
+
 from jinja2 import Environment
 import os
 import re
 import shutil
 import gzip
+from src.utils import site2minmax
 
 # todo update igv when fixed version is released
 base = """
@@ -133,16 +136,16 @@ def to_html(prefix, fasta, gff='', df=None, filter_types=('region',)):
             shutil.copyfile(gff, f'{prefix}_spec.gff')
 
     def func2(x, offset=200):
-        sinds = [int(i) for i in re.findall(r'\d+', x.sites)]
-        mi = max(1, min(sinds) - offset)
-        ma = max(sinds) + offset
+        mi, ma = site2minmax(x.sites)
+        mi_s = max(1, mi - offset)
+        ma_s = ma + offset
 
         return (
-            f"""<tr><td><span class="clickme" onClick="highlightMe(this); igv.browser.search('{x.sequence_name}:{mi}-{ma}')">{round(x.score, 2):0.2f}</span></td>"""
+            f"""<tr><td><span class="clickme" onClick="highlightMe(this); igv.browser.search('{x.sequence_name}:{mi_s}-{ma_s}')">{round(x.score, 2):0.2f}</span></td>"""
             f"<td>{x.sequence_name}</td>"
             f"<td>{x.orientation}</td>"
             f"<td>{x.matched_sequences}</td>"
-            f"<td>{min(sinds)}-{max(sinds)}<td></tr>"
+            f"<td>{mi}-{ma}<td></tr>"
         )
 
     if df is None:

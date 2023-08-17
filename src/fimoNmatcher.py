@@ -10,6 +10,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio import motifs
 from src.search_n2 import wrapper
 from src.html_output import to_html
+from src.utils import site2minmax
 import enum
 import itertools
 
@@ -486,6 +487,34 @@ def main(
     # ====================
     #    output section
     # ====================
+
+    if gff != '':
+        dfgf = pd.read_csv(gff, sep='\t', comment="#", header=None)
+        closest_annots = []
+        dist2annot = []
+        for site in all_sites.itertuples():
+            mi, ma = site2minmax(site.sites)
+            if site.orientation == 'fw':
+                gr = dfgf.loc[dfgf[6] =='+']
+                grma = gr[3] - ma
+                idx = grma[grma > 0].idxmin()
+                closest = dfgf.loc[idx]
+                closest_annots.append(closest[8])
+                dist2annot.append(closest[3]-ma)
+
+            elif site.orientation == 'rc':
+                gr = dfgf.loc[dfgf[6] == '-']
+                grmi = gr[4] - mi
+                idx = grmi[grmi < 0].idxmax()
+                closest = dfgf.loc[idx]
+                closest_annots.append(closest[8])
+                dist2annot.append(mi - closest[4])
+            else:
+                raise ValueError(f'incorrect orientation of: {site.orientation}')
+
+        all_sites['dist2annot'] = dist2annot
+        all_sites['gff'] = closest_annots
+
     if vis_track_prefix != '':
         with open(vis_track_prefix + '.gff', 'w') as f1, open(vis_track_prefix + '.interact', 'w') as f2:
             for d in D:
