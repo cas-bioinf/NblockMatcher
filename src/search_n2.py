@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def two_compatible_2tuples(I: list[tuple[int,int]], J: list[tuple[int,int]], dist:list[int]):
     j = 0
     lj = len(J)
@@ -23,15 +26,36 @@ def two_compatible_2tuples(I: list[tuple[int,int]], J: list[tuple[int,int]], dis
     return res
 
 
-def _resolve(res: list[tuple[tuple[int,int],tuple[int, int],...]], resout: list[tuple[tuple[int,int],tuple[int, int]]]):
-    nres = []
-    for r in res:
-        ridx = [r[-1] == j[0] for j in resout]
-        if any(ridx):
-            for e, j in enumerate(ridx):
-                if j:
-                    nres.append((*r, resout[e][-1]))
-    return nres
+# reference implementation
+# def _resolve(res: list[tuple[tuple[int,int],tuple[int, int],...]], resout: list[tuple[tuple[int,int],tuple[int, int]]]):
+#     nres = []
+#     for r in res:
+#         ridx = [r[-1] == j[0] for j in resout]
+#         if any(ridx):
+#             for e, j in enumerate(ridx):
+#                 if j:
+#                     nres.append((*r, resout[e][-1]))
+#     return nres
+
+# reference implementation
+# def n_compatible_2tuples(n_lists, dists):
+#     """Find compatible 2-tuples between given lists
+#     assumptions for tuple (a, b):
+#     - all tuples within a list must be same width that is b-a is constant for all tuples in a list
+#     - b > a for all tuples in a list
+#     """
+#     # initialize search by extracting first compatible tuples
+#     res = two_compatible_2tuples(n_lists[0], n_lists[1], dists[0])
+#
+#     for i in range(2, len(n_lists)):
+#         resout = two_compatible_2tuples(
+#             sorted({i[-1] for i in res}),
+#             n_lists[i],
+#             dists[i-1]
+#         )
+#
+#         res = _resolve(res, resout)
+#     return res
 
 
 def n_compatible_2tuples(n_lists, dists):
@@ -40,18 +64,33 @@ def n_compatible_2tuples(n_lists, dists):
     - all tuples within a list must be same width that is b-a is constant for all tuples in a list
     - b > a for all tuples in a list
     """
-    # initialize search by extracting first compatible tuples
-    res = two_compatible_2tuples(n_lists[0], n_lists[1], dists[0])
+    # make resolve in pandas
+    # ok, this is good, use this onwards and cleanup it
+    # todo: cleanup, maybe rewrite the downstream code
 
+    # initialize search by extracting first compatible tuples
+    results = []
+    res = two_compatible_2tuples(n_lists[0], n_lists[1], dists[0])
+    si = sorted({i[-1] for i in res})
+    results.append(res)
     for i in range(2, len(n_lists)):
-        resout = two_compatible_2tuples(
-            sorted({i[-1] for i in res}),
+        res = two_compatible_2tuples(
+            si,
             n_lists[i],
             dists[i-1]
         )
+        si = sorted({i[-1] for i in res})
+        results.append(res)
 
-        res = _resolve(res, resout)
-    return res
+    a = pd.DataFrame(results[0], columns=[0, 'x'])
+    for i in range(1, len(results)):
+        b = pd.DataFrame(results[i], columns=['x', 'y'])
+        r = pd.merge(a, b, on='x')
+        a = r.rename(columns={'x': i}).rename(columns={'y': 'x'})
+
+    a.rename(columns={'x': len(results)-1}, inplace=True)
+    return [a.iloc[i].to_list() for i in range(len(a))]
+
 
 def wrapper(n_lists, dists):
     # sort input
