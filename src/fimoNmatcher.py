@@ -500,7 +500,7 @@ def main(
                 idx = grma[grma > 0].idxmin()
                 closest = dfgf.loc[idx]
                 closest_annots.append(closest[8])
-                dist2annot.append(closest[3]-ma)
+                dist2annot.append(closest[3] - ma - 1)
 
             elif site.orientation == 'rc':
                 gr = dfgf.loc[dfgf[6] == '-']
@@ -508,7 +508,7 @@ def main(
                 idx = grmi[grmi < 0].idxmax()
                 closest = dfgf.loc[idx]
                 closest_annots.append(closest[8])
-                dist2annot.append(mi - closest[4])
+                dist2annot.append(mi - closest[4] - 1)
             else:
                 raise ValueError(f'incorrect orientation of: {site.orientation}')
 
