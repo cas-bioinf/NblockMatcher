@@ -145,14 +145,15 @@ def to_html(prefix, fasta, gff='', df=None, filter_types=('region',)):
             f"<td>{x.sequence_name}</td>"
             f"<td>{x.orientation}</td>"
             f"<td>{x.matched_sequences}</td>"
-            f"<td>{mi}-{ma}<td></tr>"
+            f"<td>{mi}-{ma}</td>"
+            f"<td>{x.dists}</td></tr>"
         )
 
     if df is None:
         dfhtml = ''
     else:
         dfhtml = ('<table id="matches">'
-                  '<thead><tr><th>score</th><th>seq</th><th>orientation</th><th>match</th><th>range</th></tr></thead>'
+                  '<thead><tr><th>score</th><th>seq</th><th>orientation</th><th>match</th><th>range</th><th>dists</th></tr></thead>'
                   '<tbody>') + '\n'.join([func2(i) for i in df.itertuples()]) + '\n</tbody><table>'
 
     template = Environment().from_string(base)
