@@ -495,20 +495,28 @@ def main(
         for site in all_sites.itertuples():
             mi, ma = site2minmax(site.sites)
             if site.orientation == 'fw':
-                gr = dfgf.loc[dfgf[6] =='+']
+                gr = dfgf.loc[dfgf[6] == '+']
                 grma = gr[3] - ma
-                idx = grma[grma > 0].idxmin()
-                closest = dfgf.loc[idx]
-                closest_annots.append(closest[8])
-                dist2annot.append(closest[3] - ma - 1)
+                idx = grma[grma > 0]
+                if len(idx) > 0:
+                    closest = dfgf.loc[idx.idxmin()]
+                    closest_annots.append(closest[8])
+                    dist2annot.append(closest[3] - ma - 1)
+                else:
+                    closest_annots.append('')
+                    dist2annot.append(float('nan'))
 
             elif site.orientation == 'rc':
                 gr = dfgf.loc[dfgf[6] == '-']
                 grmi = gr[4] - mi
-                idx = grmi[grmi < 0].idxmax()
-                closest = dfgf.loc[idx]
-                closest_annots.append(closest[8])
-                dist2annot.append(mi - closest[4] - 1)
+                idx = grmi[grmi < 0]
+                if len(idx) > 0:
+                    closest = dfgf.loc[idx.idxmax()]
+                    closest_annots.append(closest[8])
+                    dist2annot.append(mi - closest[4] - 1)
+                else:
+                    closest_annots.append('')
+                    dist2annot.append(float('nan'))
             else:
                 raise ValueError(f'incorrect orientation of: {site.orientation}')
 
