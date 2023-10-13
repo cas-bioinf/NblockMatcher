@@ -320,7 +320,7 @@ class CombinedMatch(object):
 
 def fimo_wrapper(motifs: str, fasta: Iterable[SeqRecord], options=None):
     for seq in fasta:
-        yield run_fimo(motifs, seq, options)
+        yield seq, run_fimo(motifs, seq, options)
 
 
 def run_fimo(motifs: str, fasta: SeqRecord, options=None) -> str:
@@ -346,8 +346,13 @@ def run_fimo(motifs: str, fasta: SeqRecord, options=None) -> str:
     return r.stdout
 
 
-def analyze_output(fo: str, diagrams: List[Diagram], ft: Filter):
+def analyze_output(seq: SeqRecord, fo: str, diagrams: List[Diagram], ft: Filter):
     df = pd.DataFrame().from_records(i.split('\t') for i in fo.split('\n')[1:] if i)
+    if len(df) == 0:
+        # early exit
+        print(f'Warning: No motif hits found on {seq.id} at all.')
+        return diagrams
+
     df.columns = ['motif_id', 'motif_alt_id', 'sequence_name', 'start', 'stop', 'strand', 'score', 'p-value', 'q-value', 'matched_sequence']
     df.loc[:, ['start', 'stop']] = df.loc[:, ['start', 'stop']].astype(int)
     df.score = df.score.astype(float)
@@ -478,8 +483,8 @@ def main(
         fasta_handle = open(fasta, 'r')
     input_seqs = [s for s in SeqIO.parse(fasta_handle, 'fasta')]
 
-    for seq_results in fimo_wrapper(motif_file, input_seqs, options=fimo_options):
-        _ = analyze_output(seq_results, D, filter_options)
+    for seq, seq_results in fimo_wrapper(motif_file, input_seqs, options=fimo_options):
+        _ = analyze_output(seq, seq_results, D, filter_options)
 
     all_sites = pd.concat([d.to_df() for d in D], ignore_index=True)
     all_sites.sort_values('score', ascending=False, inplace=True)
