@@ -88,7 +88,11 @@ class Diagram(object):
         self.tfmp = None
 
     def to_df(self):
-        df = pd.DataFrame(r.pretty_dict() for r in self.matches)
+        df = pd.DataFrame(
+            [r.pretty_dict() for r in self.matches],
+            columns=['sequence_name', 'diagram', 'orientation', 'scores', 'matched_sequences',
+                     'sites', 'pvals', 'strands', 'pval', 'score', 'dists']
+        )
         return df
 
     @staticmethod
@@ -553,9 +557,9 @@ if __name__ == '__main__':
     parser.add_argument("--motif-file", dest="motif_file", required=True, help="File with MEME motifs.")
     parser.add_argument("--fasta", dest="fasta", required=True, help="Fasta file to search.")
     parser.add_argument("--diag-match-output-file", dest="dmf", help="Output file .xlsx|.tsv|.csv.")
-    parser.add_argument("--fimo-options", dest="fimo_options", nargs="+", default=['--thresh', '0.05'], help="Fimo options. Must be compatible with \"--text\" option.")
+    parser.add_argument("--fimo-options", dest="fimo_options", default="--thresh 0.05", help="Fimo options given as string. Must be compatible with \"--text\" option.")
     parser.add_argument("--diagrams", dest="diagrams", nargs="+", required=True, default=[], help="List of diagram strings.")
-    parser.add_argument("--vis-track-prefix", dest="vis_track_prefix", help="Path prefix for .gff and .interact files.")
+    parser.add_argument("--vis-track-prefix", dest="vis_track_prefix", default="", help="Path prefix for .gff and .interact files.")
     parser.add_argument("--filter-score", dest="filter_score", type=float, default=0, help="Minimal combined score (default).")
     parser.add_argument("--filter-pval", dest="filter_pval", type=float, help="Minimal pval based on combined score. Overrides the filter_score if set.")
     parser.add_argument("--gff", dest="gff", help="Path to gff file to use in html rendering [optional]. File will be copied alongside the output file.")
@@ -565,8 +569,8 @@ if __name__ == '__main__':
     main(
         motif_file=args.motif_file,
         fasta=args.fasta,
-        dmf=args.diag_match_output_file,
-        fimo_options=args.fimo_options,
+        dmf=args.dmf,
+        fimo_options=args.fimo_options.split(' '),
         diagrams=args.diagrams,
         vis_track_prefix=args.vis_track_prefix,
         filter_score=args.filter_score,
