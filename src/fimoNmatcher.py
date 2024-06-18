@@ -367,11 +367,7 @@ def analyze_output(seq: SeqRecord, fo: str, diagrams: List[Diagram], ft: Filter)
 
     for d in diagrams:
         for comb in d.site_combinations(df):
-            if ft.filterby is FilterBy.SCORE:
-                if comb.score >= ft.filterThreshScore:
-                    d.matches.append(comb)
-
-            elif ft.filterby is FilterBy.TFMP:
+            if TFMP:
                 pval = tfmp.score2pval(d.tfmp, comb.score)
 
                 # ============= p-value float error handling =========================================================
@@ -381,9 +377,14 @@ def analyze_output(seq: SeqRecord, fo: str, diagrams: List[Diagram], ft: Filter)
                 if pval > 1:
                     pval = float(1)         # needed due to floating point errors
                 # ====================================================================================================
+                comb.pval = pval
 
+            if ft.filterby is FilterBy.SCORE:
+                if comb.score >= ft.filterThreshScore:
+                    d.matches.append(comb)
+
+            elif ft.filterby is FilterBy.TFMP:
                 if pval <= ft.filterThreshPval:
-                    comb.pval = pval
                     d.matches.append(comb)
             else:
                 raise NotImplementedError('Filter option not implemented. Please contact developers.')
@@ -471,7 +472,8 @@ def main(
         diag_background = join_motif_background_frequencies([M[i] for i in d.models])
 
         # set up the matrix for p-value computation from combined scores
-        if filter_options.filterby is FilterBy.TFMP:
+        #if filter_options.filterby is FilterBy.TFMP:
+        if TFMP:
             d.tfmp = tfmp.read_matrix(
                 ' '.join(' '.join(str(i) for i in diag_motif[k]) for k in alphabet),
                 bg=[diag_background[k] for k in alphabet]
