@@ -8,6 +8,7 @@ import gzip
 from src.utils import site2minmax
 
 # todo update igv when fixed version is released
+# todo when igv.js has published version with bgzipped reference, switch to that
 base = """
 <!DOCTYPE html>
 <html lang="en">
@@ -50,7 +51,6 @@ base = """
         {{dfhtml}}
     </div>
 </div>
-</body> 
 <footer>
 <script>
 var rows = document.querySelectorAll('#matches tr');
@@ -117,6 +117,7 @@ igv.createBrowser(igvDiv, options)
 </script>
 
 </footer>
+</body> 
 </html> 
 """
 
@@ -154,7 +155,7 @@ def to_html(prefix, fasta, gff='', df=None, filter_types=('region',)):
     else:
         dfhtml = ('<table id="matches">'
                   '<thead><tr><th>score</th><th>seq</th><th>orientation</th><th>match</th><th>range</th><th>dists</th></tr></thead>'
-                  '<tbody>') + '\n'.join([func2(i) for i in df.itertuples()]) + '\n</tbody><table>'
+                  '<tbody>') + '\n'.join([func2(i) for i in df.itertuples()]) + '\n</tbody></table>'
 
     template = Environment().from_string(base)
 
