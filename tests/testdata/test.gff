@@ -1,0 +1,6 @@
+##gff-version 3
+##sequence-region s1 1 60
+s1	example	feature	3	7	.	+	.	ID=feature0;Name=Feature_0
+s1	example	feature	10	20	.	+	.	ID=feature1;Name=Feature_1
+s1	example	feature	30	40	.	+	.	ID=feature2;Name=Feature_2
+s1	example	feature	61	63	.	+	.	ID=feature2;Name=Feature_3
