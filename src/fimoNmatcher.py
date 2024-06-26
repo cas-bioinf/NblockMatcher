@@ -1,7 +1,9 @@
+import re
 import tempfile
 import subprocess
 import gzip
 import os
+import warnings
 from typing import List, Iterable
 
 import pandas as pd
@@ -79,9 +81,25 @@ class Diagram(object):
     def __init__(self, diagram: str):
         self.d = diagram
 
+        m = re.fullmatch(r'(\[[\-+a-z0-9_]\](\d+(-\d+)?))*(\[[\-+a-z0-9_]\])', self.d)
+        if not m:
+            warnings.warn('Unexpected pattern specification')
+
+        if self.d[0] != '[' or self.d[-1] != ']':
+            raise ValueError('Diagram should start/end with square brackets')
+
         br_pairs = self._find_brackets(diagram)
         self.models, self.strands = self._find_model_names(diagram, br_pairs)
         self.dists = self._find_distances(diagram, br_pairs)
+
+        if len(self.models) == 0:
+            raise ValueError('No motif names were detected in provided diagram. Please check the docs to see how to specify diagram.')
+        elif len(self.models) == 1:
+            raise ValueError('Please provide at least two motifs. For single motif you can use e.g. FIMO progam.')
+
+        if not (len(self.models) - 1 == len(self.dists)):
+            raise ValueError('Expected number of distances does not match number of motifs detected.')
+
         self.matches = []
 
         # joined motif matrix for p-value computation from combined scores
@@ -101,30 +119,45 @@ class Diagram(object):
         model_strands = []
         for l, r in bracket_pairs:
             m = diagram[l + 1:r]
-            s = '+'
-            if m.startswith('-'):
+            if m.startswith('+'):
+                s = '+'
+                m = m[1:]
+            elif m.startswith('-'):
                 s = '-'
                 m = m[1:]
-
+            else:
+                # assuming default + orientation
+                s = '+'
+            if m == '':
+                raise ValueError('Empty motif name in diagram.')
             model_names.append(m)
             model_strands.append(s)
         return model_names, model_strands
 
     @staticmethod
-    def _find_distances(diagram: str, bracket_pairs: List[tuple]) -> List[tuple]:
+    def _find_distances(diagram: str, bracket_pairs: List[tuple]) -> List[List]:
         dists = []
         for i in range(len(bracket_pairs)-1):
             s = diagram[bracket_pairs[i][1]+1:bracket_pairs[i+1][0]]
             spacer_range = s.split('-')
             if len(spacer_range) == 1:
                 # we have only one distance
-                d = int(spacer_range[0])+1  # convert (correct) from spacer length to distance
-                dists.append((d, d))
+                try:
+                    d = int(spacer_range[0])  # convert (correct) from spacer length to distance
+                    dists.append([d + 1, d + 2])
+                except ValueError as e:
+                    raise ValueError(f"Incorrect distance specification: {e}")
             elif len(spacer_range) == 2:
                 # we have a range
-                dists.append([int(d)+1 for d in spacer_range])  # convert (correct) from spacer length to distance
+                try:
+                    dists.append([int(d)+1 for d in spacer_range])  # convert (correct) from spacer length to distance
+                except ValueError as e:
+                    raise ValueError(f"Incorrect distance specification: {e}")
             else:
                 raise ValueError("Invalid spacer range specification: {}".format(s))
+
+            if not dists[-1][0] < dists[-1][1]:
+                raise ValueError(f"Incorrect distance specification, first index greater than second: {s}")
         return dists
 
     @staticmethod
@@ -350,7 +383,7 @@ def run_fimo(motifs: str, fasta: SeqRecord, options=None) -> str:
     return r.stdout
 
 
-def analyze_output(seq: SeqRecord, fo: str, diagrams: List[Diagram], ft: Filter):
+def analyze_output(seq: SeqRecord, fo: str, diagrams: List[Diagram], ft: Filter, compute_pval: bool):
     df = pd.DataFrame().from_records(i.split('\t') for i in fo.split('\n')[1:] if i)
     if len(df) == 0:
         # early exit
@@ -367,7 +400,7 @@ def analyze_output(seq: SeqRecord, fo: str, diagrams: List[Diagram], ft: Filter)
 
     for d in diagrams:
         for comb in d.site_combinations(df):
-            if TFMP:
+            if TFMP and compute_pval:
                 pval = tfmp.score2pval(d.tfmp, comb.score)
 
                 # ============= p-value float error handling =========================================================
@@ -426,7 +459,8 @@ def main(
     vis_track_prefix='',
     filter_score=0,
     filter_pval=None,
-    gff=''
+    gff='',
+    compute_pval=True,
 ):
     """
 
@@ -473,7 +507,7 @@ def main(
 
         # set up the matrix for p-value computation from combined scores
         #if filter_options.filterby is FilterBy.TFMP:
-        if TFMP:
+        if TFMP and compute_pval:
             d.tfmp = tfmp.read_matrix(
                 ' '.join(' '.join(str(i) for i in diag_motif[k]) for k in alphabet),
                 bg=[diag_background[k] for k in alphabet]
@@ -487,10 +521,16 @@ def main(
         fasta_handle = gzip.open(fasta, 'rt')
     else:
         fasta_handle = open(fasta, 'r')
-    input_seqs = [s for s in SeqIO.parse(fasta_handle, 'fasta')]
+    input_seqs = []
+    is_ids = set()
+    for s in SeqIO.parse(fasta_handle, 'fasta'):
+        if s.id in is_ids:
+            raise ValueError(f"Input FASTA file can't contain duplicated IDs: {s.id}")
+        input_seqs.append(s)
+        is_ids.add(s.id)
 
     for seq, seq_results in fimo_wrapper(motif_file, input_seqs, options=fimo_options):
-        _ = analyze_output(seq, seq_results, D, filter_options)
+        _ = analyze_output(seq, seq_results, D, filter_options, compute_pval)
 
     all_sites = pd.concat([d.to_df() for d in D], ignore_index=True)
     all_sites.sort_values('score', ascending=False, inplace=True)
@@ -554,17 +594,29 @@ def main(
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="NblockMatcher - extract motif matches combinations specified in diagram(s)")
+
+    class CheckFimo(argparse.ArgumentParser):
+        def error(self, err):
+            if '--fimo-options' in err:
+                self.exit(2,
+                          f"\nError: {err}\n"
+                          f"Check if options passed to --fimo-options are quoted correctly.\n")
+            else:
+                super().error(err)
+
+    parser = CheckFimo(description="NblockMatcher - extract motif matches combinations specified in diagram(s)")
 
     parser.add_argument("--motif-file", dest="motif_file", required=True, help="File with MEME motifs.")
     parser.add_argument("--fasta", dest="fasta", required=True, help="Fasta file to search.")
-    parser.add_argument("--diag-match-output-file", dest="dmf", help="Output file .xlsx|.tsv|.csv.")
+    parser.add_argument("--diag-match-output-file", dest="dmf", help="Output file [FILE][-|.xlsx]. If filename ends with xlsx, output will be xlsx, otherwise it is TAB separated regardless of extension")
     parser.add_argument("--fimo-options", dest="fimo_options", default="--thresh 0.05", help="Fimo options given as string. Must be compatible with \"--text\" option.")
     parser.add_argument("--diagrams", dest="diagrams", nargs="+", required=True, default=[], help="List of diagram strings.")
     parser.add_argument("--vis-track-prefix", dest="vis_track_prefix", default="", help="Path prefix for .gff and .interact files.")
     parser.add_argument("--filter-score", dest="filter_score", type=float, default=0, help="Minimal combined score (default).")
-    parser.add_argument("--filter-pval", dest="filter_pval", type=float, help="Minimal pval based on combined score. Overrides the filter_score if set.")
-    parser.add_argument("--gff", dest="gff", help="Path to gff file to use in html rendering [optional]. File will be copied alongside the output file.")
+    parser.add_argument("--gff", dest="gff", default='', help="Path to gff file to use in html rendering [optional]. File will be copied alongside the output file.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--filter-pval", dest="filter_pval", type=float, help="Minimal pval based on combined score. Overrides the filter_score if set.")
+    group.add_argument("--no-pval", dest='compute_pval', action='store_false', default=True, help='turn off p-value computation with tfmpval')
 
     args = parser.parse_args()
 
@@ -576,5 +628,7 @@ if __name__ == '__main__':
         diagrams=args.diagrams,
         vis_track_prefix=args.vis_track_prefix,
         filter_score=args.filter_score,
-        filter_pval=args.filter_pval
+        filter_pval=args.filter_pval,
+        compute_pval=args.compute_pval,
+        gff=args.gff,
     )
