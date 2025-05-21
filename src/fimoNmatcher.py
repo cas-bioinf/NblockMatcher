@@ -81,7 +81,7 @@ class Diagram(object):
     def __init__(self, diagram: str):
         self.d = diagram
 
-        m = re.fullmatch(r'(\[[\-+a-z0-9_]\](\d+(-\d+)?))*(\[[\-+a-z0-9_]\])', self.d)
+        m = re.fullmatch(r'(\[[\-+a-z0-9_]+\](\d+(-\d+)?))*(\[[\-+a-z0-9_]+\])', self.d)
         if not m:
             warnings.warn('Unexpected pattern specification')
 
