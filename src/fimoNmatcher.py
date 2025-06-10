@@ -546,7 +546,7 @@ def main(
         for site in all_sites.itertuples():
             mi, ma = site2minmax(site.sites)
             if site.orientation == 'fw':
-                gr = dfgf.loc[dfgf[6] == '+']
+                gr = dfgf.loc[(dfgf[0] == site.sequence_name) & (dfgf[6] == '+')]
                 grma = gr[3] - ma
                 idx = grma[grma > 0]
                 if len(idx) > 0:
@@ -558,7 +558,7 @@ def main(
                     dist2annot.append(float('nan'))
 
             elif site.orientation == 'rc':
-                gr = dfgf.loc[dfgf[6] == '-']
+                gr = dfgf.loc[(dfgf[0] == site.sequence_name) & (dfgf[6] == '-')]
                 grmi = gr[4] - mi
                 idx = grmi[grmi < 0]
                 if len(idx) > 0:
